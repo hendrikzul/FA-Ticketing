@@ -1,6 +1,6 @@
 # Epic 03: Operations UI
 
-**Phase:** 3 | **Status:** planned | **Priority:** P0 - Critical
+**Phase:** 3 | **Status:** completed | **Priority:** P0 - Critical
 
 ## Goal
 

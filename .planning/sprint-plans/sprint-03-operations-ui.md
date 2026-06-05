@@ -1,6 +1,6 @@
 # Sprint 03: Operations UI & Kanban
 
-**Epic:** 03 - Operations UI | **Duration:** 2 weeks | **Status:** planning
+**Epic:** 03 - Operations UI | **Duration:** 2 weeks | **Status:** completed
 
 ## Sprint Goal
 

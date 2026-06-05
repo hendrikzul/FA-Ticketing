@@ -1,6 +1,6 @@
 # Sprint 05: Scale & Production
 
-**Epic:** 05 - Scale | **Duration:** 2 weeks | **Status:** planning
+**Epic:** 05 - Scale | **Duration:** 2 weeks | **Status:** completed
 
 ## Sprint Goal
 

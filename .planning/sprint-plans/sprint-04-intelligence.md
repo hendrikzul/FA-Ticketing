@@ -1,6 +1,6 @@
 # Sprint 04: Intelligence Features
 
-**Epic:** 04 - Intelligence | **Duration:** 2 weeks | **Status:** planning
+**Epic:** 04 - Intelligence | **Duration:** 2 weeks | **Status:** completed
 
 ## Sprint Goal
 

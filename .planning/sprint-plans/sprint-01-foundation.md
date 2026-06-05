@@ -1,6 +1,6 @@
 # Sprint 01: Foundation Setup
 
-**Epic:** 01 - Foundation | **Duration:** 2 weeks | **Status:** planning
+**Epic:** 01 - Foundation | **Duration:** 2 weeks | **Status:** completed
 
 ## Sprint Goal
 

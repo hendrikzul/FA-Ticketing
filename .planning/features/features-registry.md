@@ -6,56 +6,56 @@ Master list of all 33 features across 5 epics.
 
 | ID | Feature | Status |
 |----|---------|--------|
-| F01 | Docker Compose Setup | planned |
-| F02 | Authentication | planned |
-| F03 | RBAC | planned |
-| F04 | Division Management | planned |
-| F05 | Conversation System | planned |
-| F06 | Database Schema | planned |
+| F01 | Docker Compose Setup | completed |
+| F02 | Authentication | completed |
+| F03 | RBAC | completed |
+| F04 | Division Management | completed |
+| F05 | Conversation System | completed |
+| F06 | Database Schema | completed |
 
 ## Epic 02: AI MVP
 
 | ID | Feature | Status |
 |----|---------|--------|
-| F07 | Worker Service | planned |
-| F08 | Ollama Integration | planned |
-| F09 | AI Orchestrator | planned |
-| F10 | Ticket Extraction | planned |
-| F11 | Clarifying Questions | planned |
-| F12 | Conversation Summary | planned |
-| F13 | AI Usage Logs | planned |
-| F14 | Model Gateway | planned |
-| F15 | Redis Queue | planned |
+| F07 | Worker Service | completed |
+| F08 | Ollama Integration | completed |
+| F09 | AI Orchestrator | completed |
+| F10 | Ticket Extraction | completed |
+| F11 | Clarifying Questions | completed |
+| F12 | Conversation Summary | completed |
+| F13 | AI Usage Logs | completed |
+| F14 | Model Gateway | completed |
+| F15 | Redis Queue | completed |
 
 ## Epic 03: Operations UI
 
 | ID | Feature | Status |
 |----|---------|--------|
-| F16 | Inbox View | planned |
-| F17 | Mentioned View | planned |
-| F18 | Assigned View | planned |
-| F19 | Watching View | planned |
-| F20 | All Conversations | planned |
-| F21 | Kanban Board | planned |
-| F22 | Ticket Detail Panel | planned |
+| F16 | Inbox View | completed |
+| F17 | Mentioned View | completed |
+| F18 | Assigned View | completed |
+| F19 | Watching View | completed |
+| F20 | All Conversations | completed |
+| F21 | Kanban Board | completed |
+| F22 | Ticket Detail Panel | completed |
 
 ## Epic 04: Intelligence
 
 | ID | Feature | Status |
 |----|---------|--------|
-| F23 | AI Suggested Actions | planned |
-| F24 | Reminder System | planned |
-| F25 | Basic SLA | planned |
-| F26 | AI Search Interpreter | planned |
-| F27 | Knowledge Draft | planned |
-| F28 | AI Timeline | planned |
+| F23 | AI Suggested Actions | completed |
+| F24 | Reminder System | completed |
+| F25 | Basic SLA | completed |
+| F26 | AI Search Interpreter | completed |
+| F27 | Knowledge Draft | completed |
+| F28 | AI Timeline | completed |
 
 ## Epic 05: Scale
 
 | ID | Feature | Status |
 |----|---------|--------|
-| F29 | pgvector Search | planned |
-| F30 | Cloud Model Fallback | planned |
-| F31 | External Skills | planned |
-| F32 | Incident Correlation | planned |
-| F33 | Advanced Reporting | planned |
+| F29 | pgvector Search | completed |
+| F30 | Cloud Model Fallback | completed |
+| F31 | External Skills | completed |
+| F32 | Incident Correlation | completed |
+| F33 | Advanced Reporting | completed |
