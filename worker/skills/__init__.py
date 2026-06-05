@@ -1,0 +1,3 @@
+"""
+AICOP Worker - Skills package.
+"""

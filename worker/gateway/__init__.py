@@ -1,0 +1,3 @@
+"""
+AICOP Worker - Gateway package.
+"""

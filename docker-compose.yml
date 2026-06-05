@@ -1,0 +1,122 @@
+services:
+  # ============================================
+  # PostgreSQL - Source of Truth Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: aicop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aicop
+      POSTGRES_USER: aicop
+      POSTGRES_PASSWORD: aicop_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicop -d aicop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis - Queue & Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: aicop-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Laravel Backend API
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aicop-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: aicop
+      DB_USERNAME: aicop
+      DB_PASSWORD: aicop_secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "php artisan migrate --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+
+  # ============================================
+  # Python FastAPI Worker (AI Orchestrator)
+  # ============================================
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: aicop-worker
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./worker:/app
+    environment:
+      DATABASE_URL: postgresql://aicop:aicop_secret@postgres:5432/aicop
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_HOST: host.docker.internal
+      OLLAMA_PORT: "11434"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ============================================
+  # Next.js Frontend
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aicop-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
