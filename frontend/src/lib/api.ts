@@ -64,7 +64,38 @@ export const api = {
       }),
   },
 
-  // Messages
+  // Tickets
+  tickets: {
+    list: (params?: { status?: string; priority?: string; assigned_to?: number; group_by?: string; q?: string }) => {
+      const qs = new URLSearchParams(params as Record<string, string>).toString();
+      return request<any>(`/tickets${qs ? `?${qs}` : ''}`);
+    },
+    show: (id: number) => request<{ data: any }>(`/tickets/${id}`),
+    updateStatus: (id: number, status: string, note?: string) =>
+      request<{ data: any }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }),
+    assign: (id: number, data: { assigned_user_id?: number; assigned_team_id?: number; note?: string }) =>
+      request<{ data: any }>(`/tickets/${id}/assign`, { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  // Search
+  search: (q: string) => request<{ data: any[] }>(`/search?q=${encodeURIComponent(q)}`),
+
+  // Knowledge Base
+  knowledge: {
+    list: (params?: { q?: string }) => {
+      const qs = new URLSearchParams(params as Record<string, string>).toString();
+      return request<any>(`/knowledge${qs ? `?${qs}` : ''}`);
+    },
+    create: (data: any) => request<{ data: any }>('/knowledge', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  // Reports
+  reports: {
+    dashboard: () => request<{ data: any }>('/reports/dashboard'),
+    workload: () => request<{ data: any }>('/reports/workload'),
+    reminders: () => request<{ data: any }>('/reports/reminders'),
+    sla: (ticketId: number) => request<{ data: any }>(`/reports/sla/${ticketId}`),
+  },
   messages: {
     list: (conversationId: number, params?: { page?: number }) => {
       const qs = new URLSearchParams(params as Record<string, string>).toString();

@@ -68,6 +68,18 @@ class MessageController extends Controller
 
         $message->load(['mentions.user:id,name,username']);
 
+        // Dispatch AI processing job for this message
+        try {
+            \App\Services\AIJobDispatcher::dispatch(
+                $conversation->id,
+                $message->id,
+                $validated['body_text'],
+                $request->user()->id
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("AI dispatch failed: " . $e->getMessage());
+        }
+
         return response()->json(['data' => $message], 201);
     }
 
