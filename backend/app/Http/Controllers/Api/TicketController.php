@@ -7,7 +7,7 @@ use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class TicketController extends Controller
+class TicketController extends \App\Http\Controllers\Controller
 {
     /**
      * List tickets with filters (supports Kanban columns).

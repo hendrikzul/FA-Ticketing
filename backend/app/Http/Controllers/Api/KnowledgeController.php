@@ -7,7 +7,7 @@ use App\Models\Ticket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class KnowledgeController extends Controller
+class KnowledgeController extends \App\Http\Controllers\Controller
 {
     public function index(Request $request): JsonResponse
     {

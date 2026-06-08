@@ -6,7 +6,7 @@ use App\Models\Division;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class DivisionController extends Controller
+class DivisionController extends \App\Http\Controllers\Controller
 {
     public function index(): JsonResponse
     {

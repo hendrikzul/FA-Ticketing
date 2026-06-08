@@ -6,7 +6,7 @@ use App\Models\Ticket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class SearchController extends Controller
+class SearchController extends \App\Http\Controllers\Controller
 {
     /**
      * AI-interpreted search across conversations, tickets, knowledge base.

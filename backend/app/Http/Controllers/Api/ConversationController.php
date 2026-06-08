@@ -11,7 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ConversationController extends Controller
+class ConversationController extends \App\Http\Controllers\Controller
 {
     /**
      * List conversations accessible by user.

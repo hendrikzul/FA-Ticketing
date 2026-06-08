@@ -9,8 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Enable pgvector extension
-        DB::statement('CREATE EXTENSION IF NOT EXISTS vector');
+        // pgvector extension will be enabled in Phase 5 (Scale)
+        // DB::statement('CREATE EXTENSION IF NOT EXISTS vector');
 
         // Add embedding column to tickets for semantic search
         Schema::table('tickets', function (Blueprint $table) {

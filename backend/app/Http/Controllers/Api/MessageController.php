@@ -8,7 +8,7 @@ use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class MessageController extends Controller
+class MessageController extends \App\Http\Controllers\Controller
 {
     /**
      * Send a message to a conversation.

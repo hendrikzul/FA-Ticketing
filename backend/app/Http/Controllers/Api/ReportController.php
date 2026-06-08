@@ -7,7 +7,7 @@ use App\Models\Ticket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ReportController extends Controller
+class ReportController extends \App\Http\Controllers\Controller
 {
     /**
      * Dashboard summary statistics.
