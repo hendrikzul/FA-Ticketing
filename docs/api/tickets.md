@@ -358,5 +358,14 @@ Frontend tickets page (`frontend/src/app/tickets/page.tsx`) memanggil endpoint s
 | Ganti status | `/api/tickets/{id}/status` | PATCH |
 | Assign/unassign | `/api/tickets/{id}/assign` | POST |
 | Kirim komentar | `/api/tickets/{id}/comments` | POST |
+| Set estimation | `/api/tickets/{id}` | PUT |
+
+### July 2026 Features
+
+- **Estimation field**: `PUT /api/tickets/{id}` now accepts `estimation` (string, max 50). Examples: `1 day`, `2 days`, `1 week`.
+- **Mention system**: `POST /api/tickets/{id}/comments` auto-parses `@username` patterns, creates `mentions` + `notifications` records.
+- **Field change logging**: `PUT /api/tickets/{id}` now creates individual comment entries per changed field (priority, category, tags, estimation, etc).
+- **Divisions**: IT (id=1), Marketing (id=2), CS (id=3). Edit ticket detail restricted to IT division.
+- **Enterprise Login**: `/api/auth/login` supports multi-application login with Remember Me preferences.
 
 Lihat `docs/architecture/frontend.md` untuk arsitektur halaman Tickets.

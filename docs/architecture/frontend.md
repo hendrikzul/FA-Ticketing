@@ -245,16 +245,23 @@ frontend/src/app/tickets/
 | Edit priority/category | `PUT /api/tickets/{id}` | `api.tickets.update()` | ✅ | Sync conversation_states; rollback jika gagal |
 | **Ganti status** | `PATCH /api/tickets/{id}/status` | `api.tickets.updateStatus()` | ✅ | Status history, resolved_at, notifikasi reporter |
 | **Assign/unassign** | `POST /api/tickets/{id}/assign` | `api.tickets.assign()` | ✅ | Assignment history, auto `queued`, notifikasi assignee |
-| Kirim komentar | `POST /api/tickets/{id}/comments` | `api.tickets.comments.create()` | ✅ | Multipart support; komentar muncul langsung di timeline |
+| Kirim komentar | `POST /api/tickets/{id}/comments` | `api.tickets.comments.create()` | ✅ | Multipart + screenshot paste; komentar muncul langsung di timeline |
+| Set estimation | `PUT /api/tickets/{id}` | `api.tickets.update()` | — | Visible all, edit IT only; activity log |
 
-> **Perubahan Juni 2026:**
-> - Status dan assignee sekarang menggunakan endpoint dedicated (`PATCH /status` dan `POST /assign`) yang mencatat history lengkap dan mengirim notifikasi.
-> - Ditambahkan paginasi frontend dengan Prev/Next + info halaman. Filter/search otomatis reset ke halaman 1.
-> - Semua mutasi (save, changeStatus, changeAssignee, sendChat) menggunakan **optimistic updates** — UI berubah sebelum API call, rollback jika gagal.
-> - Guard **unsaved changes**: `open()` menampilkan confirm dialog jika `edit._dirty` sebelum berpindah tiket.
-> - Komponen diekstrak: `helpers.tsx` (utility + Field/Row/Chip), `CreateTicketModal.tsx` (form create + file upload).
-> - File accept diselaraskan via konstanta `FILE_ACCEPT` di `helpers.tsx`.
-> - Excel preview dibatasi 100 baris dengan warning truncation.
+> **Perubahan Juni-Juli 2026:**
+> - Status, assignee, priority, tags, estimation, category — semua melalui **single Save button** (IT-only edit).
+> - Semua perubahan dicatat di **Activity Timeline** (status → `statusHistory`, assignee → `assignments`, field changes → system comments).
+> - **Enterprise Login**: modal split-layout, 8 aplikasi, searchable dropdown, dynamic hero, Remember Me.
+> - **Mention system**: `@username` di chat → autocomplete dropdown → notifikasi + bell icon real-time (toast popup).
+> - **Pagination**: Prev/Next + numbered page buttons, server-side 20/page.
+> - **Optimistic updates**: semua mutasi update UI sebelum API call, rollback jika gagal.
+> - **Filter bar**: Search, Type, Status, Priority, Staff, Reset.
+> - **Excel import**: CSV → 58 tickets dari file Bugs CSV.
+> - **Screenshot paste**: Cmd+V langsung jadi attachment di chat.
+> - **Auto-expanding textarea**: chat input naik sampai 120px dengan animasi.
+> - **Table columns**: Checkbox, #, Priority (circle badge), Title (truncated + tooltip), Type, Category, Status, Assignee, Reporter, Created.
+> - **Divisi**: IT (id=1), Marketing (id=2), CS (id=3) — edit detail ticket hanya untuk divisi IT.
+> - **Cloudflared tunnel**: `aicop-uat.floweradvisor.co.id` → nginx:9080 → frontend:3000 + backend:8000.
 > 
 > Lihat `docs/api/tickets.md` untuk detail endpoint.
 
