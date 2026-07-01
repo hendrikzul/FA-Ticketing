@@ -11,6 +11,7 @@ import asyncio
 
 from config import settings
 from orchestrator.engine import AIOrchestrator
+from orchestrator.router import router as orchestrator_router
 from gateway.model_gateway import ModelGateway
 from skills.ticket_extractor import TicketExtractor
 from skills.summarizer import ConversationSummarizer
@@ -31,6 +32,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register orchestrator router (@ai endpoint)
+app.include_router(orchestrator_router)
+
 # Initialize services
 model_gateway: Optional[ModelGateway] = None
 orchestrator: Optional[AIOrchestrator] = None
@@ -40,11 +44,20 @@ usage_logger: Optional[UsageLogger] = None
 @app.on_event("startup")
 async def startup():
     global model_gateway, orchestrator, usage_logger
-    model_gateway = ModelGateway()
-    await model_gateway.initialize()
-    orchestrator = AIOrchestrator(model_gateway)
-    usage_logger = UsageLogger()
-    print("AICOP Worker started - AI Orchestrator ready")
+    try:
+        model_gateway = ModelGateway()
+        await model_gateway.initialize()
+        orchestrator = AIOrchestrator(model_gateway)
+        usage_logger = UsageLogger()
+        print("AICOP Worker started - AI Orchestrator ready", flush=True)
+    except Exception as e:
+        print(f"AI Orchestrator init failed: {e}", flush=True)
+
+    # Start Redis consumer
+    try:
+        asyncio.create_task(run_redis_consumer())
+    except Exception as e:
+        print(f"Redis consumer start failed: {e}", flush=True)
 
 
 # ============================================
@@ -69,11 +82,12 @@ class ExtractionResult(BaseModel):
 
 
 class AIJobRequest(BaseModel):
-    job_type: str  # process_message, generate_summary, extract_ticket
+    job_type: str  # process_message, generate_summary, extract_ticket, process_ai_mention
     conversation_id: int
     message_id: Optional[int] = None
     body_text: Optional[str] = None
     sender_id: Optional[int] = None
+    parent_id: Optional[int] = None
     conversation_context: Optional[dict] = None
 
 
@@ -164,6 +178,38 @@ async def process_job(job: AIJobRequest, background_tasks: BackgroundTasks):
         )
         return AIJobResponse(status="completed", result={"ticket": ticket})
 
+    elif job.job_type == "process_ai_mention":
+        # Handle @ai mention: call orchestrator, save reply to DB
+        from orchestrator.router import get_orchestrator as get_ai_orchestrator
+        ai_orch = get_ai_orchestrator()
+        result = await ai_orch.ask(
+            message=job.body_text,
+            conversation_id=job.conversation_id,
+            user_id=job.sender_id or 0,
+            parent_id=job.parent_id,
+        )
+        # Save AI reply to DB using the connection pool
+        try:
+            from core.database import SessionLocal
+            from sqlalchemy import text
+            import json
+            db = SessionLocal()
+            thread_parent = job.parent_id if job.parent_id else job.message_id
+            db.execute(
+                text(
+                    """INSERT INTO messages (conversation_id, parent_id, sender_type, sender_id, message_type, body_text, body_json, created_at, updated_at)
+                       VALUES (:cid, :pid, 'ai_bot', NULL, 'text', :body, :json, NOW(), NOW())"""
+                ),
+                {"cid": job.conversation_id, "pid": thread_parent, "body": result["text"],
+                 "json": json.dumps({"tools_used": result.get("tools_used", []), "usage": result.get("usage", {})})}
+            )
+            db.commit()
+            db.close()
+            print(f"AI reply saved for msg {job.message_id}", flush=True)
+        except Exception as e:
+            print(f"Failed to save AI reply: {e}", flush=True)
+        return AIJobResponse(status="completed", result=result)
+
     elif job.job_type == "suggest_actions":
         actions = await orchestrator.suggest_actions(
             conversation_id=job.conversation_id,
@@ -206,12 +252,6 @@ async def get_stats():
 # Redis Queue Consumer (background)
 # ============================================
 
-@app.on_event("startup")
-async def start_redis_consumer():
-    """Start Redis queue consumer in background."""
-    asyncio.create_task(run_redis_consumer())
-
-
 async def run_redis_consumer():
     """Continuously consume AI jobs from Redis queue."""
     import redis.asyncio as aioredis
@@ -238,6 +278,11 @@ async def run_redis_consumer():
                         await r.setex(result_key, 3600, json.dumps(response.dict()))
                     except Exception as e:
                         print(f"Job processing error: {e}")
+                        # Re-enqueue failed job so it's not lost
+                        try:
+                            await r.lpush("aicop:ai_jobs", job_data)
+                        except Exception:
+                            pass
             except aioredis.ConnectionError:
                 print("Redis connection error, retrying...")
                 await asyncio.sleep(5)

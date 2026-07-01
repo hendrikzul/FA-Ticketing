@@ -19,6 +19,8 @@ class ReportController extends \App\Http\Controllers\Controller
         $totalTickets = $tickets->count();
         $openTickets = Ticket::whereNotIn('status', ['resolved', 'closed'])->count();
         $resolvedToday = Ticket::whereDate('resolved_at', today())->count();
+        $draftTickets = Ticket::where('is_draft', true)->count();
+        $approvalPending = Ticket::where('status', 'waiting_approval')->count();
         $breachedSLA = 0;
 
         // Count SLA breached
@@ -45,6 +47,11 @@ class ReportController extends \App\Http\Controllers\Controller
             ->groupBy('category')
             ->pluck('count', 'category');
 
+        // By ticket type
+        $byTicketType = Ticket::selectRaw("coalesce(ticket_type, 'untyped') as ticket_type, count(*) as count")
+            ->groupBy('ticket_type')
+            ->pluck('count', 'ticket_type');
+
         // Recent activity
         $recentActivity = Ticket::with('reporter:id,name')
             ->orderBy('updated_at', 'desc')
@@ -64,11 +71,14 @@ class ReportController extends \App\Http\Controllers\Controller
                     'total_tickets' => $totalTickets,
                     'open_tickets' => $openTickets,
                     'resolved_today' => $resolvedToday,
+                    'draft_tickets' => $draftTickets,
+                    'approval_pending' => $approvalPending,
                     'breached_sla' => $breachedSLA,
                 ],
                 'by_priority' => $byPriority,
                 'by_status' => $byStatus,
                 'by_category' => $byCategory,
+                'by_ticket_type' => $byTicketType,
                 'recent_activity' => $recentActivity,
             ],
         ]);

@@ -27,6 +27,9 @@ Rules:
 - Return JSON for extraction tasks
 - Be concise and professional
 - Work in English and Bahasa Indonesia
+- All staff requests to IT start as conversations
+- A ticket type is not a ticket status
+- Ticket types: bugfix, development, maintenance
 
 Available intents:
 - create_ticket: User wants to create a ticket/request
@@ -88,6 +91,43 @@ class AIOrchestrator:
             extraction = await self.ticket_extractor.extract(body_text, conversation_id)
             result["ticket_fields"] = extraction.get("ticket_fields", {})
             result["missing_fields"] = extraction.get("missing_fields", [])
+            result["needs_ticket"] = extraction.get("needs_ticket", False)
+
+            if extraction.get("needs_ticket"):
+                fields = extraction["ticket_fields"]
+                approval_required = bool(fields.get("approval_required", False))
+                draft_status = "waiting_approval" if approval_required else "new"
+
+                ticket_id = DBSync.create_ticket(
+                    conversation_id=conversation_id,
+                    title=fields.get("title", body_text[:100]),
+                    description=body_text,
+                    ticket_type=fields.get("ticket_type"),
+                    category=fields.get("category"),
+                    priority=fields.get("priority", "P3"),
+                    status=draft_status,
+                    is_draft=True,
+                    approval_required=approval_required,
+                    reported_by=sender_id,
+                )
+
+                if ticket_id:
+                    result["suggested_actions"].append(f"Draft ticket #{ticket_id} created")
+                    result["ticket_fields"]["ticket_id"] = ticket_id
+
+                DBSync.update_conversation_state(
+                    conversation_id=conversation_id,
+                    object_type="ticket",
+                    needs_ticket=True,
+                    title=fields.get("title"),
+                    priority=fields.get("priority"),
+                    category=fields.get("category"),
+                    ticket_type=fields.get("ticket_type"),
+                    approval_required=approval_required,
+                    status=draft_status,
+                    missing_fields=extraction.get("missing_fields", []),
+                    extracted_fields=fields,
+                )
 
             if extraction.get("missing_fields"):
                 # Generate clarifying question
@@ -95,30 +135,18 @@ class AIOrchestrator:
                     body_text, extraction["missing_fields"]
                 )
                 result["clarifying_question"] = question
+            elif extraction.get("needs_ticket"):
+                result["suggested_actions"].append("Draft ready for IT triage")
             else:
-                # Create ticket in database
-                fields = extraction["ticket_fields"]
-                ticket_id = DBSync.create_ticket(
+                DBSync.update_conversation_state(
                     conversation_id=conversation_id,
-                    title=fields.get("title", body_text[:100]),
-                    description=body_text,
-                    category=fields.get("category"),
-                    priority=fields.get("priority", "P3"),
-                    reported_by=sender_id,
+                    object_type=None,
+                    needs_ticket=False,
+                    title=body_text[:100],
+                    current_summary=body_text[:500],
+                    missing_fields=[],
+                    extracted_fields=extraction.get("ticket_fields", {}),
                 )
-                if ticket_id:
-                    result["suggested_actions"].append(f"Ticket #{ticket_id} created")
-                    result["ticket_fields"]["ticket_id"] = ticket_id
-
-                    # Update conversation state
-                    DBSync.update_conversation_state(
-                        conversation_id=conversation_id,
-                        title=fields.get("title"),
-                        priority=fields.get("priority"),
-                        category=fields.get("category"),
-                        status="new",
-                        extracted_fields=fields,
-                    )
 
             # Save extraction
             if extraction.get("usage"):
@@ -178,7 +206,7 @@ class AIOrchestrator:
             return {"intent": "report_issue", "confidence": 0.85, "provider": "ollama", "model": "qwen3:4b",
                     "input_tokens": 0, "output_tokens": 0, "latency_ms": 0}
 
-        if re.search(r'tolong|mohon|bisa bantu|please|request|minta|butuh|perlu', text_lower):
+        if re.search(r'tolong|mohon|bisa bantu|please|request|minta|butuh|perlu|develop|fitur|improve|maintenance|perbaikan', text_lower):
             return {"intent": "create_ticket", "confidence": 0.85, "provider": "ollama", "model": "qwen3:4b",
                     "input_tokens": 0, "output_tokens": 0, "latency_ms": 0}
 
@@ -246,7 +274,8 @@ Keep it friendly and professional. Just return the question, nothing else."""
 
         if intent in ("create_ticket", "report_issue"):
             actions.extend([
-                "Create Ticket",
+                "Review Draft Ticket",
+                "Set Ticket Type",
                 "Set Priority",
                 "Assign to Team",
             ])

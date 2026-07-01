@@ -29,6 +29,7 @@ Message: "{body_text}"
 Extract these fields if present:
 - title: short summary of the issue/request (max 100 chars)
 - description: detailed description
+- ticket_type: one of [bugfix, development, maintenance]
 - category: one of [Application, Infrastructure, Network, Database, Security, General]
 - priority: one of [P1, P2, P3, P4]
   - P1: production down, all users affected, critical
@@ -37,19 +38,26 @@ Extract these fields if present:
   - P4: minor, cosmetic, request
 - impact: who/how many affected
 - urgency: how quickly needed
+- approval_required: true for development requests needing review/approval, otherwise false
 
 Also list fields that are MISSING and needed for a complete ticket.
+Also decide:
+- needs_ticket: true if this conversation should become a draft IT ticket
+- ready_to_create: true if there is enough information to create a useful draft immediately
 
 Return JSON:
 {{
   "ticket_fields": {{
     "title": "...",
     "description": "...",
+    "ticket_type": "bugfix",
     "category": "...",
     "priority": "P3",
     "impact": "...",
-    "urgency": "..."
+    "urgency": "...",
+    "approval_required": false
   }},
+  "needs_ticket": true,
   "missing_fields": ["screenshot", "error_log"],
   "ready_to_create": false
 }}"""
@@ -67,6 +75,7 @@ Return JSON:
 
             return {
                 "ticket_fields": data.get("ticket_fields", {}),
+                "needs_ticket": data.get("needs_ticket", False),
                 "missing_fields": data.get("missing_fields", []),
                 "ready_to_create": data.get("ready_to_create", False),
                 "usage": {
@@ -80,8 +89,9 @@ Return JSON:
         except Exception as e:
             print(f"TicketExtractor error: {e}")
             return {
-                "ticket_fields": {"title": body_text[:100]},
-                "missing_fields": ["category", "priority"],
+                "ticket_fields": {"title": body_text[:100], "ticket_type": "maintenance", "approval_required": False},
+                "needs_ticket": True,
+                "missing_fields": ["ticket_type", "category", "priority"],
                 "ready_to_create": False,
                 "usage": {"provider": "none", "model": "fallback", "input_tokens": 0, "output_tokens": 0, "latency_ms": 0},
             }

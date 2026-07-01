@@ -4,36 +4,35 @@
 
 **Nama Produk:** AI Collaboration & Operations Platform (AICOP)
 
-AICOP adalah platform kolaborasi operasional internal berbasis AI yang menggabungkan konsep:
+AICOP adalah platform kolaborasi operasional internal berbasis AI yang memisahkan tiga workspace utama:
 
-- WhatsApp Web: conversation list, mention, participant, watcher.
-- ChatGPT: AI-first conversation, natural language input, AI memory, AI suggested actions.
-- Ticketing System: ticket, assignment, SLA, status, audit trail.
-- Kanban: visual workflow untuk ticket, task, incident, problem, dan change.
-- AI Workspace: pusat interaksi untuk search, reporting, reminder, RCA, dan knowledge generation.
+- `Chat`: member-to-member messaging seperti WhatsApp Web.
+- `AI Desk`: AI-first intake seperti ChatGPT untuk semua request ke IT.
+- `Tickets`: hasil kerja terstruktur untuk assignment, status, dan operasional.
 
 Prinsip utama:
 
-> Everything starts as a conversation. AI decides what operational object should be created.
+> Human chat stays human. IT intake starts in AI Desk. AI decides what operational object should be created.
 
-Dalam AICOP, ticket bukan lagi objek utama. Objek utama adalah **conversation workspace**. Dari conversation, AI Orchestrator dapat membuat ticket, task, incident, problem, change request, reminder, meeting action, atau knowledge article.
+Dalam AICOP, `Chat` dan `AI Desk` memiliki tujuan yang berbeda. `Chat` dipakai untuk percakapan biasa antar member. `AI Desk` dipakai untuk semua permintaan ke IT. Dari AI Desk, AI Orchestrator menentukan apakah thread membutuhkan ticket draft, lalu mengusulkan tipe seperti **bugfix**, **development**, atau **maintenance** sebelum eksekusi di `Tickets`.
 
 ---
 
 ## 2. Visi Produk
 
-Membangun platform internal yang membuat proses kerja IT, operation, dan support menjadi lebih cepat, lebih terstruktur, dan lebih hemat waktu melalui AI Orchestrator sebagai pusat koordinasi.
+Membangun platform internal dengan `AI Desk` sebagai single front door untuk semua permintaan ke IT, sementara `Chat` tetap menjadi kanal komunikasi manusia yang ringan dan `Tickets` menjadi tempat kerja operasional.
 
 Tujuan utama:
 
-1. User tidak perlu mengisi form panjang untuk membuat ticket.
-2. Semua permintaan dimulai dari chat natural language.
-3. AI mengubah percakapan menjadi data terstruktur.
+1. User tidak perlu mengisi form panjang untuk meminta bantuan IT.
+2. Semua permintaan ke IT dimulai dari AI Desk dengan natural language.
+3. AI mengubah percakapan AI Desk menjadi data terstruktur dan draft ticket bila dibutuhkan.
 4. AI dapat bertanya jika data kurang.
 5. AI dapat membantu search, reminder, summary, routing, dan rekomendasi tindakan.
-6. Staff dan manager dapat bekerja melalui chat, list, atau kanban.
-7. Sistem hemat token dan database tetap efisien.
-8. Stack awal sederhana: frontend, backend, worker, PostgreSQL, Redis, Ollama.
+6. Staff dan manager dapat berkomunikasi lewat Chat, intake lewat AI Desk, dan bekerja lewat Tickets.
+7. Ticket type dan ticket status dipisahkan agar workflow scalable.
+8. Sistem hemat token dan database tetap efisien.
+9. Stack awal sederhana: frontend, backend, worker, PostgreSQL, Redis, Ollama.
 
 ---
 
@@ -62,13 +61,8 @@ Masalah:
 ### 3.2 Model AICOP
 
 ```text
-User
-  ↓
-Conversation
-  ↓
-AI Orchestrator
-  ↓
-Ticket / Task / Incident / KB / Reminder / Action
+Human Communication -> Chat Thread
+IT Request -> AI Desk Thread -> AI Orchestrator -> Draft Ticket / KB / Reminder / Action
 ```
 
 Keunggulan:
@@ -168,11 +162,35 @@ Hak akses:
 
 ## 5. Konsep Utama
 
-### 5.1 Conversation Workspace
+### 5.1 Split Workspace Model
 
-Conversation adalah pusat aktivitas.
+Workspace dibagi menjadi tiga:
 
-Satu conversation dapat memiliki:
+- `Chat`
+  - private thread antar member
+  - tidak memicu AI intake otomatis
+- `AI Desk`
+  - subject-based thread untuk request ke IT
+  - AI dapat bertanya, merangkum, dan membuat draft ticket
+- `Tickets`
+  - list eksekusi untuk hasil AI Desk
+
+### 5.2 Chat Workspace
+
+Chat adalah ruang komunikasi antar manusia.
+
+Satu chat thread dapat memiliki:
+
+- Pesan user/staff.
+- Attachments.
+- Mentions.
+- Watchers opsional.
+
+### 5.3 AI Desk Workspace
+
+AI Desk adalah pusat intake ke IT.
+
+Satu AI Desk thread dapat memiliki:
 
 - Pesan user.
 - Pesan staff.
@@ -188,9 +206,9 @@ Satu conversation dapat memiliki:
 - AI summary.
 - Timeline.
 
-### 5.2 Ticket sebagai Hasil Conversation
+### 5.4 Ticket sebagai Hasil AI Desk
 
-Ticket dibuat oleh AI ketika conversation mengandung request atau issue yang perlu ditangani.
+Ticket draft dibuat oleh AI ketika conversation mengandung request atau issue yang perlu ditangani oleh IT.
 
 Contoh:
 
@@ -207,6 +225,43 @@ Ya production, semua customer terdampak.
 AI:
 Ticket dibuat: P1 - Checkout Error 500 Production.
 ```
+
+### 5.2.1 Semua Request IT Dimulai dari Conversation
+
+- Semua staff yang membutuhkan bantuan IT wajib memulai dari conversation.
+- Conversation adalah pintu masuk tunggal untuk bug report, change request, maintenance request, access request, dan pertanyaan operasional.
+- AI tidak harus selalu membuat ticket final. AI terlebih dahulu menandai `needs_ticket = yes/no`.
+- Jika `needs_ticket = yes`, AI membuat **draft ticket** dan meminta klarifikasi bila data kurang.
+
+### 5.2.2 Ticket Type Bukan Ticket Status
+
+`bugfix`, `development`, dan `maintenance` bukan status. Ketiganya adalah **ticket type**.
+
+Model yang direkomendasikan:
+
+- `ticket_type`
+  - `bugfix`
+  - `development`
+  - `maintenance`
+- `ticket_status`
+  - `new`
+  - `triaged`
+  - `waiting_approval`
+  - `queued`
+  - `in_progress`
+  - `waiting_user`
+  - `waiting_vendor`
+  - `resolved`
+  - `closed`
+  - `rejected`
+  - `cancelled`
+
+### 5.2.3 Aturan Draft dan Approval
+
+- `development` dapat membutuhkan approval sebelum dikerjakan.
+- `maintenance` dapat membutuhkan schedule atau maintenance window.
+- `bugfix` dapat membutuhkan data seperti expected behavior, actual behavior, dan reproducibility.
+- Ticket tetap berasal dari conversation yang sama agar konteks tidak terpecah.
 
 ### 5.3 Mention
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { api } from '@/lib/api';
+import { Badge, BlockStack, InlineStack, Text, TextField } from '@shopify/polaris';
 
 interface Article {
   id: number;
@@ -20,44 +21,80 @@ export default function KnowledgePage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.knowledge.list(search ? { q: search } : {}).then((res) => setArticles(res.data || []));
+    api.knowledge.list(search ? { q: search } : {}).then((res) => setArticles((res.data as unknown as Article[]) || []));
   }, [search]);
 
   return (
     <AppLayout>
-      <div className="h-full p-6 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Knowledge Base</h2>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search articles..."
-            className="px-4 py-2 border rounded-lg w-64"
-          />
+      <div className="app-page">
+        <div className="app-page__header">
+          <Text as="h1" variant="headingLg">
+            Knowledge
+          </Text>
+          <Text as="p" variant="bodyMd" tone="subdued">
+            Resolution notes, runbooks, and reusable answers in an admin-style library.
+          </Text>
         </div>
-
-        <div className="space-y-4">
-          {articles.map((a) => (
-            <div key={a.id} className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded ${a.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {a.status}
-                </span>
-                {(a.tags || []).map((t) => (
-                  <span key={t} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">{t}</span>
-                ))}
-              </div>
-              <h3 className="font-semibold mt-2">{a.title}</h3>
-              {a.symptoms && <p className="text-sm text-gray-600 mt-1"><strong>Symptoms:</strong> {a.symptoms}</p>}
-              {a.resolution && <p className="text-sm text-gray-600 mt-1"><strong>Resolution:</strong> {a.resolution}</p>}
-              <div className="mt-2 text-xs text-gray-400">
-                By {a.author?.name} · {a.published_at ? new Date(a.published_at).toLocaleDateString() : 'Draft'}
-              </div>
+        <BlockStack gap="400">
+          <div className="surface-card subdued">
+            <div style={{ padding: 20 }}>
+            <TextField
+              label="Search articles"
+              value={search}
+              onChange={setSearch}
+              autoComplete="off"
+              placeholder="refund workflow, redis cache clear, courier escalation"
+            />
             </div>
-          ))}
-          {articles.length === 0 && <p className="text-gray-500">No knowledge articles yet.</p>}
-        </div>
+          </div>
+          {articles.length > 0 ? (
+            <BlockStack gap="300">
+              {articles.map((a) => (
+                <div key={a.id} className="surface-card">
+                  <div style={{ padding: 20 }}>
+                    <BlockStack gap="200">
+                    <InlineStack gap="200">
+                      <Badge tone={a.status === 'published' ? 'success' : undefined}>{a.status}</Badge>
+                      {(a.tags || []).map((t) => (
+                        <Badge key={t}>{t}</Badge>
+                      ))}
+                    </InlineStack>
+                    <Text as="h3" variant="headingMd">{a.title}</Text>
+                    {a.symptoms ? <Text as="p" variant="bodyMd"><strong>Symptoms:</strong> {a.symptoms}</Text> : null}
+                    {a.resolution ? <Text as="p" variant="bodyMd"><strong>Resolution:</strong> {a.resolution}</Text> : null}
+                    <Text as="p" variant="bodySm" tone="subdued">
+                      By {a.author?.name} · {a.published_at ? new Date(a.published_at).toLocaleDateString() : 'Draft'}
+                    </Text>
+                    </BlockStack>
+                  </div>
+                </div>
+              ))}
+            </BlockStack>
+          ) : (
+            <div className="surface-card">
+              <SimpleEmptyState
+                title="No knowledge articles yet"
+                description="Create the first article or refine the search filter."
+              />
+            </div>
+          )}
+        </BlockStack>
       </div>
     </AppLayout>
+  );
+}
+
+function SimpleEmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="simple-empty-state">
+      <BlockStack gap="100">
+        <Text as="h3" variant="headingMd">
+          {title}
+        </Text>
+        <Text as="p" variant="bodyMd" tone="subdued">
+          {description}
+        </Text>
+      </BlockStack>
+    </div>
   );
 }

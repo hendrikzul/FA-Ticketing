@@ -52,8 +52,11 @@ class SearchController extends \App\Http\Controllers\Controller
                 'id' => $t->id,
                 'title' => $t->title,
                 'number' => $t->ticket_number,
+                'ticket_type' => $t->ticket_type,
                 'priority' => $t->priority,
                 'status' => $t->status,
+                'is_draft' => (bool) $t->is_draft,
+                'approval_required' => (bool) $t->approval_required,
             ]);
         $results = array_merge($results, $ticketResults->toArray());
 

@@ -11,14 +11,15 @@ class AIJobDispatcher
      * Dispatch an AI processing job to the Redis queue.
      * Worker picks this up and processes via AI Orchestrator.
      */
-    public static function dispatch(int $conversationId, int $messageId, string $bodyText, int $senderId): void
+    public static function dispatch(int $conversationId, int $messageId, string $bodyText, int $senderId, ?int $parentId = null, string $jobType = 'process_message'): void
     {
         $job = json_encode([
-            'job_type' => 'process_message',
+            'job_type' => $jobType,
             'conversation_id' => $conversationId,
             'message_id' => $messageId,
             'body_text' => $bodyText,
             'sender_id' => $senderId,
+            'parent_id' => $parentId,
         ]);
 
         Redis::rpush('aicop:ai_jobs', $job);

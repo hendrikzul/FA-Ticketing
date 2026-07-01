@@ -33,10 +33,10 @@ class AuthController extends \App\Http\Controllers\Controller
             'is_active' => true,
         ]);
 
-        // Assign default 'user' role
-        $userRole = \App\Models\Role::where('name', 'user')->first();
-        if ($userRole) {
-            $user->roles()->attach($userRole);
+        // Assign default 'member' role
+        $memberRole = \App\Models\Role::where('name', 'guest')->first();
+        if ($memberRole) {
+            $user->roles()->attach($memberRole);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -95,6 +95,30 @@ class AuthController extends \App\Http\Controllers\Controller
     {
         return response()->json([
             'user' => $request->user()->load(['roles.permissions', 'division']),
+        ]);
+    }
+
+    /**
+     * Upload avatar for current user.
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|max:2048',
+        ]);
+
+        $user = $request->user();
+        $file = $request->file('avatar');
+        $path = $file->store('avatars', 'public');
+
+        // Generate URL using APP_URL to avoid localhost in production
+        $url = rtrim(config('app.url'), '/') . '/storage/' . $path;
+
+        $user->update(['avatar_url' => $url]);
+
+        return response()->json([
+            'message' => 'Avatar uploaded',
+            'avatar_url' => $url,
         ]);
     }
 }

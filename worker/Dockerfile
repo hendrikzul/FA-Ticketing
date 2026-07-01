@@ -1,13 +1,18 @@
-FROM python:3.12-slim
+ARG BASE_IMAGE=python:3.12-slim
+ARG SKIP_SYSTEM_DEPS=0
+FROM ${BASE_IMAGE}
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN if [ "${SKIP_SYSTEM_DEPS}" = "0" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev \
+        git \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --retries 5 -r requirements.txt
 
 COPY . .
 

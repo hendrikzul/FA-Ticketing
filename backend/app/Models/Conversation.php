@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Conversation extends Model
@@ -13,7 +14,7 @@ class Conversation extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'title', 'created_by', 'status', 'object_type',
+        'title', 'created_by', 'status', 'conversation_mode', 'object_type',
         'object_id', 'is_private', 'last_activity_at',
     ];
 
@@ -46,12 +47,17 @@ class Conversation extends Model
             ->withTimestamps();
     }
 
-    public function state(): HasMany
+    public function state(): HasOne
     {
-        return $this->hasMany(ConversationState::class);
+        return $this->hasOne(ConversationState::class);
     }
 
-    public function ticket(): HasMany
+    public function ticket(): HasOne
+    {
+        return $this->hasOne(Ticket::class)->latestOfMany();
+    }
+
+    public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
     }

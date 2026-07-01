@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TicketStatusHistory extends Model
 {
+    protected $table = 'ticket_status_history';
+
     protected $fillable = ['ticket_id', 'from_status', 'to_status', 'changed_by', 'note'];
 
     public function ticket(): BelongsTo

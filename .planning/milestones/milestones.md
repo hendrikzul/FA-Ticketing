@@ -11,7 +11,7 @@
 - [ ] F06: Database Schema
 
 ## M2: AI Core Working
-**Epic:** 02 | **Target:** AI creates tickets from chat
+**Epic:** 02 | **Target:** AI standardizes IT intake from chat
 
 - [ ] F07: Worker Service
 - [ ] F08: Ollama Integration
@@ -22,11 +22,13 @@
 - [ ] F13: AI Usage Logs
 - [ ] F14: Model Gateway
 - [ ] F15: Redis Queue
+- [ ] AI marks `needs_ticket` and draft ticket type correctly
 
 ## M3: Full UI & Workflow
-**Epic:** 03 | **Target:** Complete navigation + Kanban
+**Epic:** 03 | **Target:** Complete IT queue navigation + Kanban
 
 - [ ] F16-F22: All nav views + Kanban + Detail panel
+- [ ] Type-aware queueing for bugfix, development, maintenance
 
 ## M4: Intelligence Layer
 **Epic:** 04 | **Target:** AI-assisted operations

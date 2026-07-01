@@ -1,6 +1,9 @@
+'use client';
+
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { Banner, BlockStack, Box, Button, FormLayout, InlineGrid, InlineStack, Link, Page, Text, TextField } from '@shopify/polaris';
 
 export function LoginForm() {
   const router = useRouter();
@@ -8,70 +11,117 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const { user, token } = await api.auth.login({ email, password });
+      const { token } = await api.auth.login({ email, password });
       api.setToken(token);
       router.push('/chat');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">AICOP</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            AI Collaboration & Operations Platform
-          </p>
+    <div className="auth-shell">
+      <div className="auth-hero">
+        <span className="auth-badge">AICOP Operations Workspace</span>
+        <BlockStack gap="300">
+          <Text as="h1" variant="heading2xl">
+            Run support like an admin console, not a chat dump.
+          </Text>
+          <Text as="p" variant="bodyLg" tone="subdued">
+            Triage conversations, convert them into tickets, and build reusable operational knowledge in one Shopify-style workspace.
+          </Text>
+        </BlockStack>
+        <div className="auth-hero-panel">
+          <BlockStack gap="400">
+            <InlineGrid columns={{ xs: 1, md: 3 }} gap="300">
+              <AuthStat label="Queues" value="5 live views" />
+              <AuthStat label="SLA" value="2 breached" />
+              <AuthStat label="Knowledge" value="Ops ready" />
+            </InlineGrid>
+            <Box padding="300" background="bg-surface-secondary" borderRadius="300">
+              <BlockStack gap="150">
+                <Text as="p" variant="headingSm">Default access</Text>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  `admin@aicop.local` / `password`
+                </Text>
+              </BlockStack>
+            </Box>
+          </BlockStack>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>
-          )}
-          <div>
-            <label htmlFor="email" className="sr-only">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Email address"
-            />
+      </div>
+
+      <div style={{ width: '100%', maxWidth: 460 }}>
+        <Page>
+          <div className="surface-card subdued">
+            <div style={{ padding: 28 }}>
+              <BlockStack gap="500">
+                <BlockStack gap="150">
+                  <Text as="h2" variant="heading2xl">
+                    Sign in
+                  </Text>
+                  <Text as="p" variant="bodyMd" tone="subdued">
+                    Access the operations inbox, queue views, and reporting workspace.
+                  </Text>
+                </BlockStack>
+
+                <form onSubmit={handleLogin}>
+                  <FormLayout>
+                    {error ? <Banner tone="critical">{error}</Banner> : null}
+                    <TextField
+                      label="Email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={setEmail}
+                    />
+                    <TextField
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={setPassword}
+                      suffix={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '4px 8px',
+                            fontSize: '16px',
+                          }}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? '🙈' : '👁'}
+                        </button>
+                      }
+                    />
+                    <Button submit variant="primary" loading={loading} fullWidth>
+                      Sign in
+                    </Button>
+                  </FormLayout>
+                </form>
+
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    Need a workspace account?
+                  </Text>
+                  <Link url="/register">Create account</Link>
+                </InlineStack>
+              </BlockStack>
+            </div>
           </div>
-          <div>
-            <label htmlFor="password" className="sr-only">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Password"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-        <p className="text-center text-xs text-gray-500">
-          Default: admin@aicop.local / password
-        </p>
+        </Page>
       </div>
     </div>
   );
@@ -88,45 +138,93 @@ export function RegisterForm() {
     setError('');
     setLoading(true);
     try {
-      const { user, token } = await api.auth.register(form);
+      const { token } = await api.auth.register(form);
       api.setToken(token);
       router.push('/chat');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create account.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">AICOP</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Create your account</p>
+    <div className="auth-shell">
+      <div className="auth-hero">
+        <span className="auth-badge">Create Workspace Access</span>
+        <BlockStack gap="300">
+          <Text as="h1" variant="heading2xl">
+            Bring support, ops, and AI into the same command surface.
+          </Text>
+          <Text as="p" variant="bodyLg" tone="subdued">
+            New users land in a shared workspace built for structured triage, fast answers, and ticket execution.
+          </Text>
+        </BlockStack>
+        <div className="auth-hero-panel">
+          <BlockStack gap="300">
+            <Text as="p" variant="headingSm">What you get on first login</Text>
+            <BlockStack gap="150">
+              <Text as="p" variant="bodyMd">Inbox queues with status filters</Text>
+              <Text as="p" variant="bodyMd">Search across tickets and knowledge</Text>
+              <Text as="p" variant="bodyMd">Operational dashboards and workload visibility</Text>
+            </BlockStack>
+          </BlockStack>
         </div>
-        <form className="mt-8 space-y-4" onSubmit={handleRegister}>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>
-          )}
-          <input type="text" required placeholder="Full name" value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-          <input type="email" required placeholder="Email" value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-          <input type="password" required placeholder="Password" value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-          <input type="password" required placeholder="Confirm password" value={form.password_confirmation}
-            onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-          <button type="submit" disabled={loading}
-            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
-            {loading ? 'Creating...' : 'Create account'}
-          </button>
-        </form>
       </div>
+
+      <div style={{ width: '100%', maxWidth: 480 }}>
+        <Page>
+          <div className="surface-card subdued">
+            <div style={{ padding: 28 }}>
+              <BlockStack gap="500">
+                <BlockStack gap="150">
+                  <Text as="h2" variant="heading2xl">
+                    Create account
+                  </Text>
+                  <Text as="p" variant="bodyMd" tone="subdued">
+                    Set up your user and enter the admin workspace.
+                  </Text>
+                </BlockStack>
+
+                <form onSubmit={handleRegister}>
+                  <FormLayout>
+                    {error ? <Banner tone="critical">{error}</Banner> : null}
+                    <TextField label="Full name" autoComplete="name" value={form.name} onChange={(value) => setForm({...form, name: value})} />
+                    <TextField label="Email" type="email" autoComplete="email" value={form.email} onChange={(value) => setForm({...form, email: value})} />
+                    <TextField label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(value) => setForm({...form, password: value})} />
+                    <TextField label="Confirm password" type="password" autoComplete="new-password" value={form.password_confirmation} onChange={(value) => setForm({...form, password_confirmation: value})} />
+                    <Button submit variant="primary" loading={loading} fullWidth>
+                      Create account
+                    </Button>
+                  </FormLayout>
+                </form>
+
+                <InlineStack align="space-between">
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    Already have access?
+                  </Text>
+                  <Link url="/login">Sign in</Link>
+                </InlineStack>
+              </BlockStack>
+            </div>
+          </div>
+        </Page>
+      </div>
+    </div>
+  );
+}
+
+function AuthStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="auth-stat">
+      <BlockStack gap="100">
+        <Text as="p" variant="bodySm" tone="subdued">
+          {label}
+        </Text>
+        <Text as="p" variant="headingLg">
+          {value}
+        </Text>
+      </BlockStack>
     </div>
   );
 }

@@ -3,132 +3,196 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { api } from '@/lib/api';
+import { Badge, BlockStack, InlineGrid, Tabs, Text } from '@shopify/polaris';
+
+interface DashboardData {
+  summary: {
+    total_tickets: number;
+    open_tickets: number;
+    resolved_today: number;
+    draft_tickets: number;
+    approval_pending: number;
+    breached_sla: number;
+  };
+  by_priority?: Record<string, number>;
+  by_status?: Record<string, number>;
+  by_category?: Record<string, number>;
+  by_ticket_type?: Record<string, number>;
+  recent_activity?: Array<{
+    id: number;
+    ticket_number: string;
+    title: string;
+    status: string;
+  }>;
+}
+
+interface WorkloadItem {
+  id: number;
+  name: string;
+  assigned_tickets_count: number;
+}
+
+interface ReminderItem {
+  ticket_number: string;
+  title: string;
+  reason: string;
+}
 
 export default function ReportsPage() {
-  const [dashboard, setDashboard] = useState<any>(null);
-  const [workload, setWorkload] = useState<any[]>([]);
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [workload, setWorkload] = useState<WorkloadItem[]>([]);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [tab, setTab] = useState('dashboard');
 
   useEffect(() => {
-    api.reports.dashboard().then((res) => setDashboard(res.data));
-    api.reports.workload().then((res) => setWorkload(res.data || []));
-    api.reports.reminders().then((res) => setReminders(res.data || []));
+    api.reports.dashboard().then((res) => setDashboard(res.data as unknown as DashboardData));
+    api.reports.workload().then((res) => setWorkload((res.data as unknown as WorkloadItem[]) || []));
+    api.reports.reminders().then((res) => setReminders((res.data as unknown as ReminderItem[]) || []));
   }, []);
 
   return (
     <AppLayout>
-      <div className="h-full p-6 overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">Reports</h2>
-
-        <div className="flex gap-2 mb-6">
-          {['dashboard', 'workload', 'reminders'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm capitalize ${tab === t ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}
-            >
-              {t}
-            </button>
-          ))}
+      <div className="app-page">
+        <div className="app-page__header">
+          <Text as="h1" variant="headingLg">
+            Reports
+          </Text>
+          <Text as="p" variant="bodyMd" tone="subdued">
+            Operational visibility across queue health, workload, and SLA pressure.
+          </Text>
         </div>
+        <BlockStack gap="400">
+          <Tabs
+            tabs={[
+              {id: 'dashboard', content: 'Dashboard'},
+              {id: 'workload', content: 'Workload'},
+              {id: 'reminders', content: 'Reminders'},
+            ]}
+            selected={['dashboard', 'workload', 'reminders'].indexOf(tab)}
+            onSelect={(index) => setTab(['dashboard', 'workload', 'reminders'][index])}
+          />
 
-        {tab === 'dashboard' && dashboard && (
-          <div>
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <StatCard label="Total Tickets" value={dashboard.summary.total_tickets} color="blue" />
-              <StatCard label="Open Tickets" value={dashboard.summary.open_tickets} color="yellow" />
-              <StatCard label="Resolved Today" value={dashboard.summary.resolved_today} color="green" />
-              <StatCard label="SLA Breached" value={dashboard.summary.breached_sla} color="red" />
-            </div>
+          {tab === 'dashboard' && dashboard ? (
+            <BlockStack gap="400">
+              <InlineGrid columns={{xs: 1, md: 2, lg: 4}} gap="400">
+                <StatCard label="Total tickets" value={dashboard.summary.total_tickets} tone="info" />
+                <StatCard label="Open tickets" value={dashboard.summary.open_tickets} tone="warning" />
+                <StatCard label="Resolved today" value={dashboard.summary.resolved_today} tone="success" />
+                <StatCard label="SLA breached" value={dashboard.summary.breached_sla} tone="critical" />
+              </InlineGrid>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white p-4 rounded-lg shadow">
-                <h3 className="font-semibold mb-3">By Priority</h3>
-                {Object.entries(dashboard.by_priority || {}).map(([k, v]) => (
-                  <div key={k} className="flex justify-between py-1">
-                    <span className="text-sm">{k}</span>
-                    <span className="font-medium">{String(v)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <h3 className="font-semibold mb-3">By Status</h3>
-                {Object.entries(dashboard.by_status || {}).map(([k, v]) => (
-                  <div key={k} className="flex justify-between py-1">
-                    <span className="text-sm capitalize">{k.replace('_', ' ')}</span>
-                    <span className="font-medium">{String(v)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <InlineGrid columns={{xs: 1, md: 2}} gap="400">
+                <StatCard label="Draft tickets" value={dashboard.summary.draft_tickets} tone="attention" />
+                <StatCard label="Approval pending" value={dashboard.summary.approval_pending} tone="warning" />
+              </InlineGrid>
 
-            <div className="mt-6 bg-white p-4 rounded-lg shadow">
-              <h3 className="font-semibold mb-3">Recent Activity</h3>
-              {(dashboard.recent_activity || []).map((a: any) => (
-                <div key={a.id} className="flex justify-between py-2 border-b text-sm">
-                  <span>{a.ticket_number}: {a.title}</span>
-                  <span className="capitalize text-gray-500">{a.status.replace('_', ' ')}</span>
+              <InlineGrid columns={{xs: 1, md: 2}} gap="400">
+                <MetricCard title="By priority" entries={dashboard.by_priority || {}} />
+                <MetricCard title="By status" entries={dashboard.by_status || {}} />
+              </InlineGrid>
+
+              <InlineGrid columns={{xs: 1, md: 2}} gap="400">
+                <MetricCard title="By ticket type" entries={dashboard.by_ticket_type || {}} />
+                <MetricCard title="By category" entries={dashboard.by_category || {}} />
+              </InlineGrid>
+
+              <div className="surface-card">
+                <div style={{ padding: 20 }}>
+                  <BlockStack gap="300">
+                  <Text as="h3" variant="headingMd">Recent activity</Text>
+                  {(dashboard.recent_activity || []).map((a) => (
+                    <InlineGrid key={a.id} columns="1fr auto" gap="200">
+                      <Text as="p" variant="bodyMd">{a.ticket_number}: {a.title}</Text>
+                      <Badge>{a.status.replace('_', ' ')}</Badge>
+                    </InlineGrid>
+                  ))}
+                  </BlockStack>
                 </div>
-              ))}
+              </div>
+            </BlockStack>
+          ) : null}
+
+          {tab === 'workload' ? (
+            <div className="surface-card">
+              <div style={{ padding: 8 }}>
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Active tickets</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workload.map((w) => (
+                      <tr key={w.id}>
+                        <td>{w.name}</td>
+                        <td>{w.assigned_tickets_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          ) : null}
 
-        {tab === 'workload' && (
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h3 className="font-semibold mb-4">Staff Workload</h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Name</th>
-                  <th className="text-right py-2">Active Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workload.map((w: any) => (
-                  <tr key={w.id} className="border-b">
-                    <td className="py-2">{w.name}</td>
-                    <td className="text-right py-2 font-medium">{w.assigned_tickets_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {tab === 'reminders' && (
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h3 className="font-semibold mb-4">Stale Tickets & SLA Alerts</h3>
-            {reminders.length === 0 ? (
-              <p className="text-gray-500 text-sm">No reminders - all tickets are on track!</p>
-            ) : (
-              reminders.map((r: any, i: number) => (
-                <div key={i} className="border-b py-3">
-                  <div className="font-medium">{r.ticket_number}: {r.title}</div>
-                  <div className="text-sm text-red-600">{r.reason}</div>
-                  {r.hours_stale && <div className="text-xs text-gray-500">{r.hours_stale}h stale</div>}
-                </div>
-              ))
-            )}
-          </div>
-        )}
+          {tab === 'reminders' ? (
+            <div className="surface-card">
+              <div style={{ padding: 20 }}>
+                <BlockStack gap="300">
+                <Text as="h3" variant="headingMd">Stale tickets & SLA alerts</Text>
+                {reminders.length === 0 ? (
+                  <Text as="p" variant="bodyMd" tone="subdued">No reminders. Everything is on track.</Text>
+                ) : (
+                  reminders.map((r, i) => (
+                    <BlockStack key={i} gap="100">
+                      <Text as="p" variant="bodyMd">{r.ticket_number}: {r.title}</Text>
+                      <Text as="p" variant="bodySm" tone="critical">{r.reason}</Text>
+                    </BlockStack>
+                  ))
+                )}
+                </BlockStack>
+              </div>
+            </div>
+          ) : null}
+        </BlockStack>
       </div>
     </AppLayout>
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  const colors: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-700',
-    yellow: 'bg-yellow-50 text-yellow-700',
-    green: 'bg-green-50 text-green-700',
-    red: 'bg-red-50 text-red-700',
-  };
+function StatCard({ label, value, tone }: { label: string; value: number; tone: 'info' | 'warning' | 'attention' | 'success' | 'critical' }) {
   return (
-    <div className={`${colors[color]} p-4 rounded-lg`}>
-      <div className="text-sm">{label}</div>
-      <div className="text-3xl font-bold mt-1">{value}</div>
+    <div className="surface-card metric-card">
+      <div style={{ padding: 20 }}>
+        <BlockStack gap="200">
+        <Badge tone={tone}>{label}</Badge>
+        <div className="metric-card__value">{String(value)}</div>
+      </BlockStack>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ title, entries }: { title: string; entries: Record<string, unknown> }) {
+  return (
+    <div className="surface-card subdued">
+      <div style={{ padding: 20 }}>
+        <BlockStack gap="300">
+        <Text as="h3" variant="headingMd">{title}</Text>
+        {Object.entries(entries).length > 0 ? (
+          Object.entries(entries).map(([key, value]) => (
+            <InlineGrid key={key} columns="1fr auto">
+              <Text as="span" variant="bodyMd">{key.replace('_', ' ')}</Text>
+              <Text as="span" variant="bodyMd" fontWeight="medium">{String(value)}</Text>
+            </InlineGrid>
+          ))
+        ) : (
+          <Text as="p" variant="bodyMd" tone="subdued">
+            No data yet
+          </Text>
+        )}
+      </BlockStack>
+      </div>
     </div>
   );
 }

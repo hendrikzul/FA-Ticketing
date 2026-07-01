@@ -4,26 +4,27 @@
 
 ## Goal
 
-Membangun navigasi penuh (Inbox, Mentioned, Assigned, Watching, All Conversations) dan Kanban board.
+Membangun informasi arsitektur UI baru: `Chat` untuk member messaging, `AI Desk` untuk AI intake, dan `Tickets` untuk execution list dan workflow.
 
 ## Features
 
 | ID | Feature | Description |
 |----|---------|-------------|
-| F16 | Inbox View | Relevant conversations for user |
-| F17 | Mentioned View | Conversations where user is mentioned |
-| F18 | Assigned View | Tickets/tasks assigned to user |
-| F19 | Watching View | Conversations user is watching |
-| F20 | All Conversations | Full list with filters |
-| F21 | Kanban Board | Drag-and-drop visual workflow |
-| F22 | Ticket Detail Panel | Full ticket info, timeline, watchers |
+| F16 | Chat View | Human-to-human chat list and thread |
+| F17 | AI Desk View | AI intake history by subject |
+| F18 | Ticket Controls in AI Desk | Draft or active ticket controls inside AI thread |
+| F19 | Tickets List | Structured operational tickets page |
+| F20 | Separate Navigation | Clear separation between Chat, AI Desk, and Tickets |
+| F21 | Kanban Board | Optional workflow board behind Tickets |
+| F22 | Ticket Detail Context | Full ticket info, type, timeline, watchers |
 
 ## Success Criteria
 
-- [ ] All navigation menus functional
+- [ ] Chat, AI Desk, and Tickets navigation functional
 - [ ] Kanban drag-and-drop works
-- [ ] Filter by assignee/team/status/priority
+- [ ] Filter by assignee/team/type/status/priority
 - [ ] Ticket state displays real-time
+- [ ] Human chat does not trigger AI intake automatically
 
 ## Dependencies
 

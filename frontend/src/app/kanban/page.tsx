@@ -1,43 +1,75 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { api } from '@/lib/api';
+import { Badge, BlockStack, InlineGrid, InlineStack, Select, Text } from '@shopify/polaris';
 
-const COLUMNS = ['new', 'triaged', 'assigned', 'working', 'waiting_user', 'waiting_vendor', 'resolved', 'closed'];
+const COLUMNS = ['new', 'triaged', 'waiting_approval', 'queued', 'in_progress', 'waiting_user', 'waiting_vendor', 'resolved', 'closed', 'rejected', 'cancelled'];
 const COLUMN_LABELS: Record<string, string> = {
-  new: 'New', triaged: 'Triaged', assigned: 'Assigned', working: 'Working',
-  waiting_user: 'Waiting User', waiting_vendor: 'Waiting Vendor', resolved: 'Resolved', closed: 'Closed',
+  new: 'New',
+  triaged: 'Triaged',
+  waiting_approval: 'Waiting Approval',
+  queued: 'Queued',
+  in_progress: 'In Progress',
+  waiting_user: 'Waiting User',
+  waiting_vendor: 'Waiting Vendor',
+  resolved: 'Resolved',
+  closed: 'Closed',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
 };
+const TYPE_OPTIONS = [
+  { label: 'All types', value: '' },
+  { label: 'Bugfix', value: 'bugfix' },
+  { label: 'Development', value: 'development' },
+  { label: 'Maintenance', value: 'maintenance' },
+];
 
-const PRIORITY_COLORS: Record<string, string> = {
-  P1: 'bg-red-100 text-red-800', P2: 'bg-orange-100 text-orange-800',
-  P3: 'bg-yellow-100 text-yellow-800', P4: 'bg-green-100 text-green-800',
-};
+interface TicketCard {
+  id: number;
+  ticket_number: string;
+  title: string;
+  ticket_type?: string | null;
+  priority: string;
+  status: string;
+  is_draft?: boolean;
+  approval_required?: boolean;
+  assigned_user?: {name: string} | null;
+}
 
 export default function KanbanPage() {
-  const [columns, setColumns] = useState<Record<string, any[]>>({});
-  const [loading, setLoading] = useState(true);
+  const [columns, setColumns] = useState<Record<string, TicketCard[]>>({});
+  const [ticketType, setTicketType] = useState('');
+
+  const loadBoard = async (activeType: string) => {
+    const res = await api.tickets.list({ group_by: 'status', ticket_type: activeType || undefined });
+    setColumns((res.data as unknown as Record<string, TicketCard[]>) || {});
+  };
 
   useEffect(() => {
-    loadKanban();
-  }, []);
+    let active = true;
 
-  const loadKanban = async () => {
-    try {
-      const res = await api.tickets.list({ group_by: 'status' });
-      setColumns(res.data || {});
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    (async () => {
+      try {
+        const res = await api.tickets.list({ group_by: 'status', ticket_type: ticketType || undefined });
+        if (active) {
+          setColumns((res.data as unknown as Record<string, TicketCard[]>) || {});
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [ticketType]);
 
   const moveTicket = async (ticketId: number, toStatus: string) => {
     try {
       await api.tickets.updateStatus(ticketId, toStatus);
-      loadKanban();
+      await loadBoard(ticketType);
     } catch (err) {
       console.error(err);
     }
@@ -45,49 +77,96 @@ export default function KanbanPage() {
 
   return (
     <AppLayout>
-      <div className="h-full overflow-x-auto p-4">
-        <h2 className="text-lg font-bold mb-4">Kanban Board</h2>
-        <div className="flex gap-4 min-w-max">
-          {COLUMNS.map((col) => (
-            <div key={col} className="w-64 flex-shrink-0">
-              <div className="bg-gray-100 rounded-t-lg px-3 py-2 font-semibold text-sm text-gray-700">
-                {COLUMN_LABELS[col]}
-                <span className="ml-2 bg-gray-300 rounded-full px-2 py-0.5 text-xs">
-                  {columns[col]?.length || 0}
-                </span>
+      <div className="app-page app-page--full">
+        <div className="app-page__header">
+          <Text as="h1" variant="headingLg">
+            Kanban
+          </Text>
+          <Text as="p" variant="bodyMd" tone="subdued">
+            Ticket execution lanes for draft intake, approval, queueing, execution, and closure.
+          </Text>
+        </div>
+        <div className="surface-card subdued" style={{ marginBottom: 16 }}>
+          <div style={{ padding: 16 }}>
+            <InlineStack align="space-between" blockAlign="center">
+              <Text as="p" variant="bodyMd" fontWeight="medium">
+                Filter by ticket type
+              </Text>
+              <div style={{ minWidth: 220 }}>
+                <Select
+                  label="Ticket type"
+                  labelHidden
+                  options={TYPE_OPTIONS}
+                  value={ticketType}
+                  onChange={setTicketType}
+                />
               </div>
-              <div className="bg-gray-50 rounded-b-lg p-2 space-y-2 min-h-[200px]">
-                {columns[col]?.map((ticket: any) => (
-                  <div key={ticket.id} className="bg-white p-3 rounded shadow-sm border cursor-pointer hover:shadow-md">
-                    <div className="text-xs text-gray-500">{ticket.ticket_number}</div>
-                    <div className="font-medium text-sm mt-1">{ticket.title}</div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-0.5 rounded ${PRIORITY_COLORS[ticket.priority] || ''}`}>
-                        {ticket.priority}
-                      </span>
-                      {ticket.assigned_user && (
-                        <span className="text-xs text-gray-500">{ticket.assigned_user.name}</span>
-                      )}
-                    </div>
-                    {col !== COLUMNS[COLUMNS.length - 1] && (
-                      <select
-                        className="mt-2 w-full text-xs border rounded p-1"
-                        value=""
-                        onChange={(e) => e.target.value && moveTicket(ticket.id, e.target.value)}
-                      >
-                        <option value="">Move to...</option>
-                        {COLUMNS.filter((c) => c !== col).map((c) => (
-                          <option key={c} value={c}>{COLUMN_LABELS[c]}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                ))}
+            </InlineStack>
+          </div>
+        </div>
+        <div style={{overflowX: 'auto'}}>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(10, minmax(260px, 1fr))', gap: 16, minWidth: 2680}}>
+            {COLUMNS.map((col) => (
+              <div key={col} className="surface-card subdued kanban-column">
+                <div style={{ padding: 16 }}>
+                  <BlockStack gap="300">
+                  <InlineGrid columns="1fr auto">
+                    <Text as="h2" variant="headingMd">{COLUMN_LABELS[col]}</Text>
+                    <Badge>{String(columns[col]?.length || 0)}</Badge>
+                  </InlineGrid>
+                  <BlockStack gap="300">
+                    {columns[col]?.map((ticket) => (
+                      <div key={ticket.id} className="surface-card">
+                        <div style={{ padding: 16 }}>
+                          <BlockStack gap="200">
+                          <Text as="p" variant="bodySm" tone="subdued">{ticket.ticket_number}</Text>
+                          <Text as="p" variant="bodyMd" fontWeight="medium">{ticket.title}</Text>
+                          <InlineStack gap="150">
+                            {ticket.ticket_type ? <Badge tone="info">{formatType(ticket.ticket_type)}</Badge> : null}
+                            {ticket.is_draft ? <Badge tone="attention">Draft</Badge> : null}
+                            {ticket.approval_required ? <Badge tone="warning">Needs approval</Badge> : null}
+                          </InlineStack>
+                          <InlineGrid columns="auto 1fr" gap="200">
+                            <Badge tone={priorityTone(ticket.priority)}>{ticket.priority}</Badge>
+                            <Text as="span" variant="bodySm" tone="subdued">
+                              {ticket.assigned_user?.name || 'Unassigned'}
+                            </Text>
+                          </InlineGrid>
+                          {col !== COLUMNS[COLUMNS.length - 1] ? (
+                            <Select
+                              label="Move ticket"
+                              labelHidden
+                              options={[
+                                {label: 'Move to...', value: ''},
+                                ...COLUMNS.filter((c) => c !== col).map((c) => ({label: COLUMN_LABELS[c], value: c})),
+                              ]}
+                              value=""
+                              onChange={(value) => value && moveTicket(ticket.id, value)}
+                            />
+                          ) : null}
+                          </BlockStack>
+                        </div>
+                      </div>
+                    ))}
+                  </BlockStack>
+                </BlockStack>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </AppLayout>
   );
+}
+
+function priorityTone(priority: string): 'critical' | 'warning' | 'success' | 'info' {
+  if (priority === 'P1') return 'critical';
+  if (priority === 'P2') return 'warning';
+  if (priority === 'P4') return 'success';
+  return 'info';
+}
+
+function formatType(ticketType: string): string {
+  return ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
 }

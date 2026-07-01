@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Mention extends Model
 {
-    protected $fillable = ['message_id', 'user_id', 'is_read', 'read_at'];
+    protected $fillable = ['message_id', 'comment_id', 'user_id', 'is_read', 'read_at'];
 
     protected $casts = [
         'is_read' => 'boolean',

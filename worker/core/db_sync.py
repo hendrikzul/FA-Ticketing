@@ -4,11 +4,42 @@ Syncs AI results back to Laravel PostgreSQL database.
 """
 
 from typing import Optional
+from sqlalchemy import text
 from core.database import get_db
 
 
 class DBSync:
     """Sync AI orchestrator results to the database."""
+
+    # ── Generic query helpers ────────────────────────────
+
+    @staticmethod
+    def query(sql: str, params: tuple = None) -> list:
+        """Execute a SELECT query and return all rows."""
+        db = get_db()
+        try:
+            result = db.execute(text(sql), params or {})
+            return result.fetchall()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    @staticmethod
+    def query_one(sql: str, params: tuple = None):
+        """Execute a SELECT query and return a single row (or None)."""
+        db = get_db()
+        try:
+            result = db.execute(text(sql), params or {})
+            return result.fetchone()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # ── Conversation state ─────────────────────────────
 
     @staticmethod
     def update_conversation_state(
@@ -170,11 +201,80 @@ class DBSync:
                 pass
 
     @staticmethod
+    def create_ticket_assignment(
+        ticket_id: int,
+        assigned_to: int,
+        assigned_by: int = None,
+        team_id: int = None,
+        note: str = None,
+    ) -> Optional[int]:
+        """Create a ticket assignment record and update ticket's assigned_user/team. Returns assignment ID."""
+        try:
+            db = get_db()
+
+            # Get assigned_to user's division as team_id if not provided
+            if team_id is None:
+                user_division = DBSync._fetch_one(
+                    db,
+                    "SELECT division_id FROM users WHERE id = :user_id",
+                    {"user_id": assigned_to},
+                )
+                if user_division and user_division[0]:
+                    team_id = user_division[0]
+
+            result = DBSync._execute(
+                db,
+                """
+                INSERT INTO ticket_assignments (ticket_id, assigned_by, assigned_to, team_id, note)
+                VALUES (:ticket_id, :assigned_by, :assigned_to, :team_id, :note)
+                RETURNING id
+                """,
+                {
+                    "ticket_id": ticket_id,
+                    "assigned_by": assigned_by,
+                    "assigned_to": assigned_to,
+                    "team_id": team_id,
+                    "note": note,
+                },
+            )
+            assignment_id = result.fetchone()[0]
+
+            # Also update ticket's assigned_user_id and assigned_team_id
+            DBSync._execute(
+                db,
+                """
+                UPDATE tickets SET assigned_user_id = :assigned_to, assigned_team_id = :team_id
+                WHERE id = :ticket_id
+                """,
+                {
+                    "ticket_id": ticket_id,
+                    "assigned_to": assigned_to,
+                    "team_id": team_id,
+                },
+            )
+
+            db.commit()
+            return assignment_id
+        except Exception as e:
+            print(f"DBSync create_ticket_assignment error: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return None
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    @staticmethod
     def create_ticket(
         conversation_id: int,
         title: str,
         description: Optional[str] = None,
         category: Optional[str] = None,
+        ticket_type: Optional[str] = None,
         priority: str = "P3",
         status: str = "new",
         reported_by: Optional[int] = None,
@@ -195,13 +295,13 @@ class DBSync:
             result = db.execute(
                 """
                 INSERT INTO tickets (conversation_id, ticket_number, title, description,
-                    category, priority, status, reported_by, assigned_team_id, assigned_user_id, tags)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    category, ticket_type, priority, status, reported_by, assigned_team_id, assigned_user_id, tags)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
                     conversation_id, ticket_number, title, description,
-                    category, priority, status, reported_by, assigned_team_id, assigned_user_id,
+                    category, ticket_type, priority, status, reported_by, assigned_team_id, assigned_user_id,
                     json.dumps(tags) if tags else None,
                 ),
             )

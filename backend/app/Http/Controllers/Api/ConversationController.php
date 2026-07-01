@@ -20,10 +20,15 @@ class ConversationController extends \App\Http\Controllers\Controller
     {
         $user = $request->user();
         $filter = $request->get('filter', 'all'); // all, inbox, mentioned, assigned, watching
+        $mode = $request->get('mode');
 
         $query = Conversation::query()
-            ->with(['creator:id,name,username', 'state'])
+            ->with(['creator:id,name,username', 'state', 'participants:id,name'])
             ->withCount('messages');
+
+        if (in_array($mode, ['human', 'ai', 'direct', 'group'], true)) {
+            $query->where('conversation_mode', $mode);
+        }
 
         switch ($filter) {
             case 'inbox':
@@ -71,13 +76,41 @@ class ConversationController extends \App\Http\Controllers\Controller
             'title' => 'nullable|string|max:255',
             'is_private' => 'sometimes|boolean',
             'message' => 'required|string',
+            'conversation_mode' => 'nullable|in:human,ai,direct,group',
+            'participant_ids' => 'nullable|array',
+            'participant_ids.*' => 'exists:users,id',
         ]);
 
+        $conversationMode = $validated['conversation_mode'] ?? 'ai';
+        $participantIds = collect($validated['participant_ids'] ?? [])
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => $id !== $request->user()->id)
+            ->unique()
+            ->values();
+
+        if ($conversationMode === 'human' && $participantIds->isEmpty()) {
+            return response()->json([
+                'message' => 'Human chat requires at least one recipient.',
+                'errors' => ['participant_ids' => ['Select at least one recipient for human chat.']],
+            ], 422);
+        }
+
+        $title = $validated['title'] ?? 'New Conversation';
+        $isPrivate = $validated['is_private'] ?? ($conversationMode === 'human');
+
+        if ($conversationMode === 'human' && $participantIds->count() === 1 && empty($validated['title'])) {
+            $recipient = User::find($participantIds->first());
+            if ($recipient) {
+                $title = $recipient->name;
+            }
+        }
+
         $conversation = Conversation::create([
-            'title' => $validated['title'] ?? 'New Conversation',
+            'title' => $title,
             'created_by' => $request->user()->id,
             'status' => 'active',
-            'is_private' => $validated['is_private'] ?? false,
+            'conversation_mode' => $conversationMode,
+            'is_private' => $isPrivate,
             'last_activity_at' => now(),
         ]);
 
@@ -85,6 +118,12 @@ class ConversationController extends \App\Http\Controllers\Controller
         $conversation->participants()->attach($request->user()->id, [
             'role' => 'owner',
         ]);
+
+        foreach ($participantIds as $participantId) {
+            $conversation->participants()->syncWithoutDetaching([
+                $participantId => ['role' => 'participant'],
+            ]);
+        }
 
         // Create initial message
         $message = Message::create([
@@ -98,6 +137,7 @@ class ConversationController extends \App\Http\Controllers\Controller
         // Create conversation state
         ConversationState::create([
             'conversation_id' => $conversation->id,
+            'object_type' => $conversationMode === 'ai' ? 'intake' : 'chat',
             'last_activity_at' => now(),
         ]);
 
@@ -123,7 +163,10 @@ class ConversationController extends \App\Http\Controllers\Controller
             'participants:id,name,username,email',
             'watchers:id,name,username',
             'state',
-            'messages' => fn($q) => $q->orderBy('created_at', 'desc')->limit(50),
+            'ticket:tickets.id,tickets.conversation_id,tickets.ticket_number,tickets.title,tickets.ticket_type,tickets.category,tickets.priority,tickets.status,tickets.is_draft,tickets.approval_required,tickets.assigned_team_id,tickets.assigned_user_id,tickets.due_at',
+            'ticket.assignedUser:id,name',
+            'ticket.assignedTeam:id,name',
+            'messages' => fn($q) => $q->orderBy('created_at', 'asc')->limit(50),
             'messages.mentions.user:id,name,username',
             'aiSummaries' => fn($q) => $q->latest()->limit(5),
         ]);
@@ -136,6 +179,8 @@ class ConversationController extends \App\Http\Controllers\Controller
      */
     public function addParticipant(Conversation $conversation, Request $request): JsonResponse
     {
+        $this->authorizeConversationManagement($request->user(), $conversation);
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'role' => 'nullable|in:owner,participant',
@@ -153,6 +198,8 @@ class ConversationController extends \App\Http\Controllers\Controller
      */
     public function addWatcher(Conversation $conversation, Request $request): JsonResponse
     {
+        $this->authorizeConversationManagement($request->user(), $conversation);
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
@@ -169,6 +216,8 @@ class ConversationController extends \App\Http\Controllers\Controller
      */
     public function removeWatcher(Conversation $conversation, Request $request): JsonResponse
     {
+        $this->authorizeConversationManagement($request->user(), $conversation);
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
@@ -183,14 +232,40 @@ class ConversationController extends \App\Http\Controllers\Controller
      */
     private function authorizeConversation(User $user, Conversation $conversation): void
     {
-        if ($conversation->is_private) {
-            $isParticipant = $conversation->participants()
-                ->where('user_id', $user->id)
-                ->exists();
-
-            if (!$isParticipant && $conversation->created_by !== $user->id) {
-                abort(403, 'You do not have access to this conversation.');
-            }
+        if ($conversation->is_private && !$this->canObserveConversation($user, $conversation)) {
+            abort(403, 'You do not have access to this conversation.');
         }
+    }
+
+    private function authorizeConversationManagement(User $user, Conversation $conversation): void
+    {
+        if ($conversation->created_by === $user->id) {
+            return;
+        }
+
+        $isOwner = $conversation->participants()
+            ->where('user_id', $user->id)
+            ->wherePivot('role', 'owner')
+            ->exists();
+
+        if (!$isOwner) {
+            abort(403, 'You do not have permission to manage this conversation.');
+        }
+    }
+
+    private function canObserveConversation(User $user, Conversation $conversation): bool
+    {
+        if ($conversation->created_by === $user->id) {
+            return true;
+        }
+
+        if ($conversation->participants()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        return $conversation->watchers()
+            ->where('user_id', $user->id)
+            ->wherePivot('is_active', true)
+            ->exists();
     }
 }
