@@ -160,7 +160,7 @@ class UserController extends \App\Http\Controllers\Controller
     public function roles(): JsonResponse
     {
         return response()->json([
-            'data' => Role::select('id', 'name', 'label', 'permissions')->get(),
+            'data' => Role::select('id', 'name', 'label')->get(),
         ]);
     }
 }
