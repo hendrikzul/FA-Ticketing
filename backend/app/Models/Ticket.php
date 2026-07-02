@@ -16,7 +16,7 @@ class Ticket extends Model
         'conversation_id', 'ticket_number', 'title', 'description',
         'ticket_type', 'category', 'priority', 'status', 'is_draft', 'approval_required', 'reported_by',
         'assigned_team_id', 'assigned_user_id',
-        'due_at', 'resolved_at', 'closed_at', 'tags', 'url', 'estimation',
+        'due_at', 'resolved_at', 'closed_at', 'started_at', 'tags', 'url', 'estimation',
     ];
 
     protected $casts = [

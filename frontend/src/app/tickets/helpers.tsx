@@ -1,7 +1,7 @@
 import { BlockStack, Text } from '@shopify/polaris';
 
 /** Accepted file types for ticket attachments and comments — aligned with backend validation */
-export const FILE_ACCEPT = 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.json,.xml,.html,.py,.js';
+export const FILE_ACCEPT = 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.json,.xml,.html,.py,.js,.md,.log,.yml,.yaml';
 
 /** snake_case → Title Case */
 export function fmt(v: string): string {

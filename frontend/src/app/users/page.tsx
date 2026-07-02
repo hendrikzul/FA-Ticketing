@@ -34,6 +34,7 @@ export default function UsersPage() {
   const [formPassword, setFormPassword] = useState('');
   const [formRoles, setFormRoles] = useState<number[]>([]);
   const [formDivision, setFormDivision] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchUsers = () => {
     api.users.list({ q: search || undefined, role: roleFilter || undefined })
@@ -57,8 +58,8 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setFormName(''); setFormEmail(''); setFormUsername('');
-    setFormPassword(''); setFormRoles([]); setFormDivision('');
-    setError('');
+    setFormPassword('floweradvisor'); setFormRoles([]); setFormDivision('');
+    setError(''); setShowPassword(false);
     setCreating(true);
   };
 
@@ -76,7 +77,7 @@ export default function UsersPage() {
     try {
       const payload: Record<string, unknown> = {
         name: formName, email: formEmail,
-        username: formUsername || undefined,
+        username: formUsername.trim() || undefined,
         division_id: formDivision ? Number(formDivision) : undefined,
       };
       if (formPassword) payload.password = formPassword;
@@ -203,11 +204,17 @@ export default function UsersPage() {
                 {error}
               </div>
             )}
-            <TextField label="Name" value={formName} onChange={setFormName} autoComplete="off" />
+            <TextField label="Name" value={formName} onChange={v => { setFormName(v); if (creating) setFormUsername(v.toLowerCase().replace(/\s+/g, '-')); }} autoComplete="off" />
             <TextField label="Email" value={formEmail} onChange={setFormEmail} autoComplete="off" type="email" />
             <TextField label="Username" value={formUsername} onChange={setFormUsername} autoComplete="off" />
-            <TextField label={editing ? 'New password (leave blank to keep)' : 'Password'}
-              value={formPassword} onChange={setFormPassword} autoComplete="off" type="password" />
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0 }}>
+              <div style={{ flex: 1 }}>
+                <TextField label={editing ? 'New password (leave blank to keep)' : 'Password'}
+                  value={formPassword} onChange={setFormPassword} autoComplete="off" type={showPassword ? 'text' : 'password'} />
+              </div>
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{ height: 32, width: 32, marginBottom: 4, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{showPassword ? '🙈' : '👁'}</button>
+            </div>
 
             {/* Division selector */}
             {divisions.length > 0 && (

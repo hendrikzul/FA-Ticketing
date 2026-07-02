@@ -30,9 +30,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     : 'AI';
 
   const coreNavItems = [
+    { label: 'Tickets', url: '/tickets', icon: OrderIcon },
     { label: 'Chat', url: '/chat', icon: ChatIcon },
     { label: 'AI Desk', url: '/ai-desk', icon: NotificationIcon },
-    { label: 'Tickets', url: '/tickets', icon: OrderIcon },
   ];
 
   // Dynamic addon nav items — only show if user has at least read access

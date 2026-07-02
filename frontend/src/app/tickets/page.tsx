@@ -27,6 +27,7 @@ export default function TicketsPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const isIT = user?.division_id === 1;
+  const isManager = isIT && user?.roles?.some((r: any) => r.name === 'Manager' || r.label === 'Manager');
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [q, setQ] = useState(''); const [tp, setTp] = useState(''); const [st, setSt] = useState(''); const [pr, setPr] = useState(''); const [sf, setSf] = useState('');
   const [sortBy, setSortBy] = useState('id'); const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
@@ -58,7 +59,7 @@ export default function TicketsPage() {
   const [fileViewer, setFileViewer] = useState<{ name: string; url: string; type: string; text?: string; _rows?: any[][]; _sheet?: string; _truncated?: boolean } | null>(null);
   const [chatFile, setChatFile] = useState<File | null>(null); const [chatPreview, setChatPreview] = useState('');
   const chatFileRef = useRef<HTMLInputElement>(null);
-  const [lightbox, setLightbox] = useState('');
+  const [lightbox, setLightbox] = useState(''); const [zoom, setZoom] = useState(1);
   const [statusSaving, setStatusSaving] = useState(false);
   const [assignSaving, setAssignSaving] = useState(false);
   const [users, setUsers] = useState<{ id: number; name: string }[]>([]);
@@ -236,9 +237,15 @@ export default function TicketsPage() {
   return (
     <AppLayout>
       {lightbox && (
-        <div onClick={() => setLightbox('')} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <img src={lightbox} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} />
-          <button onClick={() => setLightbox('')} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', fontSize: 24, width: 40, height: 40, borderRadius: 20, cursor: 'pointer' }}>✕</button>
+        <div onClick={() => { setLightbox(''); setZoom(1); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img src={lightbox} alt="" onClick={e => e.stopPropagation()} onWheel={e => { e.preventDefault(); e.stopPropagation(); setZoom(z => Math.max(0.5, Math.min(5, z + (e.deltaY > 0 ? -0.2 : 0.2)))); }}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, transform: `scale(${zoom})`, transition: 'transform 0.15s ease', cursor: zoom > 1 ? 'zoom-out' : 'zoom-in' }} />
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: '8px 14px' }}>
+            <button onClick={() => setZoom(z => Math.max(0.5, z - 0.3))} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', width: 32, height: 32, borderRadius: 6, fontSize: 18, cursor: 'pointer' }}>−</button>
+            <button onClick={() => setZoom(1)} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '0 12px', height: 32, borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{Math.round(zoom * 100)}%</button>
+            <button onClick={() => setZoom(z => Math.min(5, z + 0.3))} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', width: 32, height: 32, borderRadius: 6, fontSize: 18, cursor: 'pointer' }}>+</button>
+          </div>
+          <button onClick={() => { setLightbox(''); setZoom(1); }} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', fontSize: 24, width: 40, height: 40, borderRadius: 20, cursor: 'pointer' }}>✕</button>
         </div>
       )}
 
@@ -319,11 +326,12 @@ export default function TicketsPage() {
                 {th('priority', 'Priority', 70)}
                 {th('title', 'Title')}
                 {!detailId && th('ticket_type', 'Type', 95)}
-                {!detailId && th('category', 'Category', 110)}
+                {!detailId && th('url', 'URL', 110)}
                 {th('status', 'Status', 100)}
                 {th('assigned_user', 'Assignee', 120)}
                 {th('reporter', 'Reporter', 100)}
                 {th('created_at', 'Created', 90)}
+                {!detailId && th('estimation', 'Est.', 80)}
               </tr></thead>
               <tbody>
                 {sortedTickets.map(t => (
@@ -337,14 +345,15 @@ export default function TicketsPage() {
                       <Text as="p" variant="bodyMd" fontWeight="medium" truncate>{t.title}</Text>
                     </td>
                     {!detailId && <td style={{ padding: '10px 12px' }}><span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: t.ticket_type === 'bugfix' ? '#fef2f2' : t.ticket_type === 'development' ? '#eff6ff' : '#f0fdf4', color: t.ticket_type === 'bugfix' ? '#dc2626' : t.ticket_type === 'development' ? '#3b82f6' : '#16a34a' }}>{fmt(t.ticket_type || '—')}</span></td>}
-                    {!detailId && <td style={{ padding: '10px 12px' }}><Text as="span" variant="bodySm" tone="subdued">{t.category || '—'}</Text></td>}
+                    {!detailId && <td style={{ padding: '10px 12px' }}>{t.url ? <a href={t.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: '#3b82f6', fontSize: 13 }}>🔗</a> : <Text as="span" variant="bodySm" tone="subdued">—</Text>}</td>}
                     <td style={{ padding: '10px 12px' }}><Badge tone={stt(t.status)}>{fmt(t.status)}</Badge></td>
                     <td style={{ padding: '10px 12px' }}><Text as="span" variant="bodySm">{t.assigned_user?.name || <Text as="span" tone="subdued">—</Text>}</Text></td>
                     <td style={{ padding: '10px 12px' }}><Text as="span" variant="bodySm">{t.reporter?.name || <Text as="span" tone="subdued">—</Text>}</Text></td>
                     <td style={{ padding: '10px 12px' }}><Text as="span" variant="bodySm" tone="subdued">{t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</Text></td>
+                    {!detailId && <td style={{ padding: '10px 12px' }}><Text as="span" variant="bodySm" tone="subdued">{t.estimation || '—'}</Text></td>}
                   </tr>
                 ))}
-                {tickets.length === 0 && <tr><td colSpan={10}><div style={{ padding: 40, textAlign: 'center' }}><Text as="p" variant="bodyMd" tone="subdued">No tickets match.</Text></div></td></tr>}
+                {tickets.length === 0 && <tr><td colSpan={11}><div style={{ padding: 40, textAlign: 'center' }}><Text as="p" variant="bodyMd" tone="subdued">No tickets match.</Text></div></td></tr>}
               </tbody>
             </table>
             {totalPages > 1 && (
@@ -374,6 +383,36 @@ export default function TicketsPage() {
                   </BlockStack>
                   <Button variant="tertiary" onClick={close}>✕</Button>
                 </InlineStack>
+                {/* CTA Action Buttons */}
+                {isIT && (
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {detail.status === 'new' && isManager && (
+                      <>
+                        <button onClick={async () => { const s = 'resolved'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#22c55e', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>✅ Resolved</button>
+                        <button onClick={async () => { const s = 'rejected'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>❌ Reject</button>
+                        <button onClick={async () => { const s = 'cancelled'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6b7280', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>🚫 Cancel</button>
+                      </>
+                    )}
+                    {detail.status === 'triaged' && detail.assigned_user?.id === user?.id && (
+                      <button onClick={async () => { const s = 'in_progress'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#22c55e', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>▶ Start Working</button>
+                    )}
+                    {isManager && (detail.status === 'triaged' || detail.status === 'in_progress') && (
+                      <>
+                        <button onClick={async () => { const s = 'rejected'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>❌ Reject</button>
+                        <button onClick={async () => { const s = 'cancelled'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6b7280', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>🚫 Cancel</button>
+                      </>
+                    )}
+                    {detail.status === 'in_progress' && detail.assigned_user?.id === user?.id && (
+                      <button onClick={async () => { const s = 'resolved'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#22c55e', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>✅ Done</button>
+                    )}
+                    {detail.status === 'resolved' && isManager && (
+                      <>
+                        <button onClick={async () => { const s = 'closed'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>🔒 Close</button>
+                        <button onClick={async () => { const s = 'in_progress'; setTickets(prev => prev.map(t => t.id === detailId ? { ...t, status: s } : t)); await api.tickets.updateStatus(detailId, s); open(detailId); }} style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Reopen</button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
@@ -566,9 +605,6 @@ export default function TicketsPage() {
                 {/* INFO SIDEBAR */}
                 <div style={{ flex: 1, padding: 14 }}>
                   <BlockStack gap="300">
-                    <Field label="Status">
-                      <Select label="" labelHidden options={STATUSES} value={edit.status} onChange={v => setEdit({ ...edit, status: v, _dirty: true })} disabled={!isIT} />
-                    </Field>
                     <Field label="Type">
                       <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: detail.ticket_type === 'bugfix' ? '#fef2f2' : detail.ticket_type === 'development' ? '#eff6ff' : '#f0fdf4', color: detail.ticket_type === 'bugfix' ? '#dc2626' : detail.ticket_type === 'development' ? '#3b82f6' : '#16a34a' }}>
                         {fmt(detail.ticket_type || '—')}
@@ -611,6 +647,7 @@ export default function TicketsPage() {
         </div>
 
         <CreateTicketModal
+          key={form.priority + form.ticket_type}
           open={showCreate}
           onClose={() => setShowCreate(false)}
           saving={saving}

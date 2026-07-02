@@ -120,7 +120,7 @@ export const api = {
 
   // Tickets
   tickets: {
-    create: (data: { title: string; description?: string; ticket_type: string; priority?: string; category?: string; reported_by?: string; assigned_user_id?: string; assigned_team_id?: string; files?: File[] }) => {
+    create: (data: { title: string; description?: string; ticket_type: string; priority?: string; category?: string; url?: string; reported_by?: string; assigned_user_id?: string; assigned_team_id?: string; files?: File[] }) => {
       if (data.files?.length) {
         const fd = new FormData();
         fd.append('title', data.title);
@@ -128,6 +128,7 @@ export const api = {
         fd.append('ticket_type', data.ticket_type);
         if (data.priority) fd.append('priority', data.priority);
         if (data.category) fd.append('category', data.category);
+        if (data.url) fd.append('url', data.url);
         if (data.assigned_team_id) fd.append('assigned_team_id', data.assigned_team_id);
         data.files.forEach((f) => fd.append('files[]', f));
         return request<{ data: ApiRecord }>('/tickets', { method: 'POST', body: fd });
