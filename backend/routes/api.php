@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\SocialiteController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\DivisionController;
 use App\Http\Controllers\Api\MessageController;
@@ -26,6 +27,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login'])->name('login');
+});
+
+// OAuth SSO routes (public)
+Route::prefix('auth/{provider}')->group(function () {
+    Route::get('/redirect', [SocialiteController::class, 'redirect']);
+    Route::get('/callback', [SocialiteController::class, 'callback']);
 });
 
 // Signed URL routes (no auth header — browser loads directly)
